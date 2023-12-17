@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+use std::io::{Error, Read, Write};
 use std::net::{SocketAddrV4, TcpStream};
+
+use crate::data_blocks::DataBlocks;
 
 pub struct Connection {
     tcp_stream: TcpStream,
@@ -26,12 +29,42 @@ impl Connection {
             tcp_stream
         }
     }
+
+    pub fn find(&self) {
+        println!("Find")
+    }
+
+    pub fn insert(&mut self, key: &str, column_family: &str, column: &str, value: &str) {
+        let data_blocks = DataBlocks::new();
+        data_blocks.append_var_str(key);
+        data_blocks.append_var_str(column_family);
+        data_blocks.append_var_str(column);
+        data_blocks.append_var_str(value);
+
+        data_blocks.write(&self.tcp_stream);
+    }
+
+    pub fn delete(&self) {
+        println!("Delete")
+    }
+
+    fn read(&mut self) -> DataBlocks {
+        let response = DataBlocks::new();
+        response
+    }
 }
 
-pub fn create_connection(db_addr: SocketAddrV4) -> Connection {
+pub fn connect(db_addr: SocketAddrV4) -> Result<Connection, Error> {
     let result = TcpStream::connect(db_addr);
-    let tcp_stream = result.unwrap();
-    Connection::new(tcp_stream)
+    return match result {
+        Ok(tcp_stream) => {
+            Ok(Connection::new(tcp_stream))
+        }
+
+        Err(e) => {
+            Err(e)
+        }
+    };
 }
 
 #[cfg(test)]
@@ -40,9 +73,31 @@ mod tests {
 
     use super::*;
 
+    fn init_connection() -> Connection {
+        let host = Ipv4Addr::new(127, 0, 0, 1);
+        let db_addr = SocketAddrV4::new(host, 7820);
+
+        let result = connect(db_addr);
+
+        match result {
+            Ok(connection) => {
+                connection
+            }
+
+            Err(e) => {
+                panic!("Connect to LynxDB failed, {}", e)
+            }
+        }
+    }
+
     #[test]
     fn test_001() {
-        let db_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7820);
-        let connection = create_connection(db_addr);
+        let connection = init_connection();
+    }
+
+    #[test]
+    fn test_002() {
+        let mut connection = init_connection();
+        connection.insert("key", "column_family", "column", "value");
     }
 }

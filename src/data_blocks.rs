@@ -14,5 +14,32 @@
  * limitations under the License.
  */
 
-pub mod lynxdb;
-mod data_blocks;
+use std::collections::VecDeque;
+use std::net::TcpStream;
+
+pub struct DataBlocks<'a> {
+    blocks: VecDeque<Node<'a>>,
+}
+
+impl<'a> DataBlocks<'a> {
+    pub fn new() -> DataBlocks<'a> {
+        DataBlocks {
+            blocks: VecDeque::new(),
+        }
+    }
+
+    pub fn append_var_str(&self, s: &str) {}
+
+    pub fn write(&self, tcp_stream: &TcpStream) {}
+}
+
+struct Node<'a> {
+    data: &'a [u8],
+}
+
+impl<'a> Node<'a> {
+    pub fn data(&self) -> &[u8] {
+        self.data
+    }
+}
+

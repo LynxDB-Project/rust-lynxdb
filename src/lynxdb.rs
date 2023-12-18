@@ -17,7 +17,7 @@
 use std::io::{Error, Read, Write};
 use std::net::{SocketAddrV4, TcpStream};
 
-use crate::data_blocks::DataBlocks;
+use crate::request::Request;
 
 pub struct Connection {
     tcp_stream: TcpStream,
@@ -35,21 +35,21 @@ impl Connection {
     }
 
     pub fn insert(&mut self, key: &str, column_family: &str, column: &str, value: &str) {
-        let data_blocks = DataBlocks::new();
+        let mut data_blocks = Request::new(true);
         data_blocks.append_var_str(key);
         data_blocks.append_var_str(column_family);
         data_blocks.append_var_str(column);
         data_blocks.append_var_str(value);
 
-        data_blocks.write(&self.tcp_stream);
+        data_blocks.write(&mut self.tcp_stream);
     }
 
     pub fn delete(&self) {
         println!("Delete")
     }
 
-    fn read(&mut self) -> DataBlocks {
-        let response = DataBlocks::new();
+    fn read(&mut self) -> Request {
+        let response = Request::new(false);
         response
     }
 }

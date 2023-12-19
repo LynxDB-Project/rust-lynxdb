@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-pub mod lynxdb;
+use std::net::TcpStream;
 
-mod request;
-mod response;
+pub struct Response {}
+
+impl Response {
+    pub fn new() -> Response {
+        Response {}
+    }
+
+    pub fn read(&self, tcp_stream: &mut TcpStream) {}
+}

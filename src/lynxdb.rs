@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-use std::io::{Error, Read, Write};
+use std::io::{Read, Result, Write};
 use std::net::{SocketAddrV4, TcpStream};
 
-use crate::request::Request;
+use crate::request::{__METHOD__DELETE, __METHOD__FIND_BY_KEY_CF_COLUMN, Request};
+use crate::response::Response;
 
 pub struct Connection {
     tcp_stream: TcpStream,
@@ -34,27 +35,47 @@ impl Connection {
         println!("Find")
     }
 
-    pub fn insert(&mut self, key: &str, column_family: &str, column: &str, value: &str) {
-        let mut data_blocks = Request::new(true);
-        data_blocks.append_var_str(key);
-        data_blocks.append_var_str(column_family);
-        data_blocks.append_var_str(column);
-        data_blocks.append_var_str(value);
+    pub fn insert(&mut self, key: &str, column_family: &str, column: &str, value: &str) -> Result<Response> {
+        let mut request = Request::new(__METHOD__FIND_BY_KEY_CF_COLUMN);
+        request.append_var_str(key);
+        request.append_var_str(column_family);
+        request.append_var_str(column);
+        request.append_var_str(value);
 
-        data_blocks.write(&mut self.tcp_stream);
+        let result = request.write(&mut self.tcp_stream);
+        match result {
+            Ok(len) => {
+                println!("Finish writing {} bytes data to lynxdb server.", len);
+            }
+            Err(e) => return Err(e)
+        };
+
+        let response = Response::new();
+        response.read(&mut self.tcp_stream);
+        return Ok(response);
     }
 
-    pub fn delete(&self) {
-        println!("Delete")
-    }
+    pub fn delete(&mut self, key: &str, column_family: &str, column: &str) -> Result<Response> {
+        let mut request = Request::new(__METHOD__DELETE);
+        request.append_var_str(key);
+        request.append_var_str(column_family);
+        request.append_var_str(column);
 
-    fn read(&mut self) -> Request {
-        let response = Request::new(false);
-        response
+        let result = request.write(&mut self.tcp_stream);
+        match result {
+            Ok(len) => {
+                println!("Finish writing {} bytes data to lynxdb server.", len);
+            }
+            Err(e) => return Err(e)
+        };
+
+        let response = Response::new();
+        response.read(&mut self.tcp_stream);
+        return Ok(response);
     }
 }
 
-pub fn connect(db_addr: SocketAddrV4) -> Result<Connection, Error> {
+pub fn connect(db_addr: SocketAddrV4) -> Result<Connection> {
     let result = TcpStream::connect(db_addr);
     return match result {
         Ok(tcp_stream) => {

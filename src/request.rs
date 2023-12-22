@@ -60,42 +60,18 @@ impl<'a> Request<'a> {
     pub fn write(&self, tcp_stream: &mut TcpStream) -> Result<u32> {
         let mut write_len: u32 = 0;
 
-        let mut bytes_vec: Vec<&[u8]> = Vec::new();
-
-        let bytes = &self.len.to_be_bytes();
-        bytes_vec.push(bytes);
-        let bytes = &__FLAG__CLIENT_REQUEST.to_be_bytes();
-        bytes_vec.push(bytes);
-        let bytes = &SERIAL.fetch_add(1, Ordering::SeqCst).to_be_bytes();
-        bytes_vec.push(bytes);
-        let bytes = &self.method.to_be_bytes();
-        bytes_vec.push(bytes);
-
-        for bytes in bytes_vec {
-            let result = tcp_stream.write(bytes);
-            match result {
-                Ok(len) => { write_len += len as u32 }
-                Err(e) => return Err(e)
-            }
-        }
+        write_len += tcp_stream.write(&self.len.to_be_bytes())? as u32;
+        write_len += tcp_stream.write(&__FLAG__CLIENT_REQUEST.to_be_bytes())? as u32;
+        write_len += tcp_stream.write(&SERIAL.fetch_add(1, Ordering::SeqCst).to_be_bytes())? as u32;
+        write_len += tcp_stream.write(&self.method.to_be_bytes())? as u32;
 
         // write data
         for node in &self.blocks {
             if node.has_len {
                 let bytes = (node.bytes.len() as u32).to_be_bytes();
-                let result = tcp_stream.write(&bytes);
-
-                match result {
-                    Ok(len) => { write_len += len as u32 }
-                    Err(e) => return Err(e)
-                }
+                write_len += tcp_stream.write(&bytes)? as u32;
             }
-
-            let result = tcp_stream.write(node.bytes);
-            match result {
-                Ok(len) => { write_len += len as u32 }
-                Err(e) => return Err(e)
-            }
+            write_len += tcp_stream.write(node.bytes)? as u32;
         }
 
         Ok(write_len)

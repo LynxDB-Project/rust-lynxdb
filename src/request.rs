@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Baili Zhang.
+ * Copyright 2023-2024 Baili Zhang.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,15 @@ use std::sync::atomic::{AtomicU32, Ordering};
 pub const __METHOD__FIND_BY_KEY_CF_COLUMN: u8 = 1;
 pub const __METHOD__FIND_MULTI_COLUMNS: u8 = 2;
 pub const __METHOD__INSERT: u8 = 3;
+pub const __METHOD__INSERT_MULTI_COLUMNS: u8 = 4;
+pub const __METHOD__INSERT_IF_NOT_EXISTED: u8 = 5;
 pub const __METHOD__DELETE: u8 = 6;
-// TODO...
+pub const __METHOD__RANGE_NEXT: u8 = 7;
+pub const __METHOD__RANGE_BEFORE: u8 = 8;
+pub const __METHOD__EXIST_KEY: u8 = 9;
 
 const __FLAG__CLIENT_REQUEST: u8 = 1;
-const SERIAL: AtomicU32 = AtomicU32::new(0);
+const SERIAL: AtomicU32 = AtomicU32::new(1);
 
 pub struct Request<'a> {
     method: u8,
@@ -61,8 +65,8 @@ impl<'a> Request<'a> {
         let mut write_len: u32 = 0;
 
         write_len += tcp_stream.write(&self.len.to_be_bytes())? as u32;
-        write_len += tcp_stream.write(&__FLAG__CLIENT_REQUEST.to_be_bytes())? as u32;
         write_len += tcp_stream.write(&SERIAL.fetch_add(1, Ordering::SeqCst).to_be_bytes())? as u32;
+        write_len += tcp_stream.write(&__FLAG__CLIENT_REQUEST.to_be_bytes())? as u32;
         write_len += tcp_stream.write(&self.method.to_be_bytes())? as u32;
 
         // write data

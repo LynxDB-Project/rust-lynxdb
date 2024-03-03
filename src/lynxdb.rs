@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Baili Zhang.
+ * Copyright 2023-2024 Baili Zhang.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 use std::io::{Read, Result, Write};
-use std::net::{SocketAddrV4, TcpStream};
+use std::net::{Shutdown, SocketAddrV4, TcpStream};
 
 use crate::request::{__METHOD__DELETE, __METHOD__FIND_BY_KEY_CF_COLUMN, Request};
 use crate::response::Response;
@@ -73,6 +73,10 @@ impl Connection {
         response.read(&mut self.tcp_stream);
         return Ok(response);
     }
+
+    pub fn close(&mut self) {
+        self.tcp_stream.shutdown(Shutdown::Both).unwrap();
+    }
 }
 
 pub fn connect(db_addr: SocketAddrV4) -> Result<Connection> {
@@ -90,7 +94,9 @@ pub fn connect(db_addr: SocketAddrV4) -> Result<Connection> {
 
 #[cfg(test)]
 mod tests {
+    use core::time;
     use std::net::{Ipv4Addr, SocketAddrV4};
+    use std::thread;
 
     use super::*;
 
@@ -119,6 +125,10 @@ mod tests {
     #[test]
     fn test_002() {
         let mut connection = init_connection();
-        connection.insert("key", "column_family", "column", "value");
+        connection.insert("key", "column_family", "column", "value")
+            .expect("");
+
+        let time = time::Duration::from_secs(20);
+        thread::sleep(time);
     }
 }

@@ -4,4 +4,4 @@ version = 3
 
 [[package]]
 name = "lynxdb"
-version = "2023.12.17-alpha"
+version = "1.0.0-alpha"

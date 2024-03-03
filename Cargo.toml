@@ -1,6 +1,6 @@
 [package]
 name = "lynxdb"
-version = "2023.12.17-alpha"
+version = "1.0.0-alpha"
 edition = "2021"
 description = "A rust client of LynxDB."
 homepage = "https://lynxdb.bailizhang.com/"

@@ -24,4 +24,9 @@ impl Response {
     }
 
     pub fn read(&self, tcp_stream: &mut TcpStream) {}
+
+    pub fn to_str(&self) -> &str {
+        let s = "";
+        s
+    }
 }

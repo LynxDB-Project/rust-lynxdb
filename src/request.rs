@@ -61,24 +61,27 @@ impl<'a> Request<'a> {
         self.append(true, data);
     }
 
-    pub fn write(&self, tcp_stream: &mut TcpStream) -> Result<u32> {
-        let mut write_len: u32 = 0;
+    pub fn append_raw_u64(&mut self, value: u64) {
+        let data = &value.to_be_bytes();
+        self.append(false, data);
+    }
 
-        write_len += tcp_stream.write(&self.len.to_be_bytes())? as u32;
-        write_len += tcp_stream.write(&SERIAL.fetch_add(1, Ordering::SeqCst).to_be_bytes())? as u32;
-        write_len += tcp_stream.write(&__FLAG__CLIENT_REQUEST.to_be_bytes())? as u32;
-        write_len += tcp_stream.write(&self.method.to_be_bytes())? as u32;
+    pub fn write(&self, tcp_stream: &mut TcpStream) -> Result<()> {
+        tcp_stream.write(&self.len.to_be_bytes())?;
+        tcp_stream.write(&SERIAL.fetch_add(1, Ordering::SeqCst).to_be_bytes())?;
+        tcp_stream.write(&__FLAG__CLIENT_REQUEST.to_be_bytes())?;
+        tcp_stream.write(&self.method.to_be_bytes())?;
 
         // write data
         for node in &self.blocks {
             if node.has_len {
                 let bytes = (node.bytes.len() as u32).to_be_bytes();
-                write_len += tcp_stream.write(&bytes)? as u32;
+                tcp_stream.write(&bytes)?;
             }
-            write_len += tcp_stream.write(node.bytes)? as u32;
+            tcp_stream.write(node.bytes)?;
         }
 
-        Ok(write_len)
+        Ok(())
     }
 }
 

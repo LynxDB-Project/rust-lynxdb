@@ -17,7 +17,13 @@
 use std::io::{Read, Result, Write};
 use std::net::{Shutdown, SocketAddrV4, TcpStream};
 
-use crate::request::{__METHOD__DELETE, __METHOD__FIND_BY_KEY_CF_COLUMN, Request};
+use crate::request::{
+    __METHOD__DELETE,
+    __METHOD__FIND_BY_KEY_CF_COLUMN,
+    __METHOD__FIND_MULTI_COLUMNS,
+    __METHOD__INSERT,
+    Request,
+};
 use crate::response::Response;
 
 pub struct Connection {
@@ -31,47 +37,77 @@ impl Connection {
         }
     }
 
-    pub fn find(&self) {
-        println!("Find")
-    }
-
-    pub fn insert(&mut self, key: &str, column_family: &str, column: &str, value: &str) -> Result<Response> {
+    pub fn find(&mut self, key: &str, column_family: &str, column: &str) -> Result<&str> {
         let mut request = Request::new(__METHOD__FIND_BY_KEY_CF_COLUMN);
         request.append_var_str(key);
         request.append_var_str(column_family);
         request.append_var_str(column);
-        request.append_var_str(value);
 
-        let result = request.write(&mut self.tcp_stream);
-        match result {
-            Ok(len) => {
-                println!("Finish writing {} bytes data to lynxdb server.", len);
-            }
-            Err(e) => return Err(e)
-        };
+        request.write(&mut self.tcp_stream)?;
 
         let response = Response::new();
-        response.read(&mut self.tcp_stream);
-        return Ok(response);
+        response.read(&mut self.tcp_stream)?;
+
+        let value = response.to_str();
+        return Ok(value);
     }
 
-    pub fn delete(&mut self, key: &str, column_family: &str, column: &str) -> Result<Response> {
+    pub fn find_multi_columns(&mut self, key: &str, column_family: &str, columns: Vec<&str>) -> Result<()> {
+        let mut request = Request::new(__METHOD__FIND_MULTI_COLUMNS);
+        request.append_var_str(key);
+        request.append_var_str(column_family);
+
+        for column in columns {
+            request.append_var_str(column);
+        }
+
+        request.write(&mut self.tcp_stream)?;
+
+        let response = Response::new();
+        response.read(&mut self.tcp_stream)?;
+
+        return Ok(());
+    }
+
+    pub fn insert(
+        &mut self,
+        key: &str,
+        column_family: &str,
+        column: &str,
+        timeout: u64,
+        value: &str,
+    ) -> Result<()> {
+        let mut request = Request::new(__METHOD__INSERT);
+        request.append_var_str(key);
+        request.append_var_str(column_family);
+        request.append_var_str(column);
+        request.append_raw_u64(timeout);
+        request.append_var_str(value);
+
+        request.write(&mut self.tcp_stream)?;
+
+        let response = Response::new();
+        response.read(&mut self.tcp_stream)?;
+
+        // TODO: check response
+
+        return Ok(());
+    }
+
+    pub fn delete(&mut self, key: &str, column_family: &str, column: &str) -> Result<()> {
         let mut request = Request::new(__METHOD__DELETE);
         request.append_var_str(key);
         request.append_var_str(column_family);
         request.append_var_str(column);
 
-        let result = request.write(&mut self.tcp_stream);
-        match result {
-            Ok(len) => {
-                println!("Finish writing {} bytes data to lynxdb server.", len);
-            }
-            Err(e) => return Err(e)
-        };
+        request.write(&mut self.tcp_stream)?;
 
         let response = Response::new();
         response.read(&mut self.tcp_stream);
-        return Ok(response);
+
+        // TODO: check response
+
+        return Ok(());
     }
 
     pub fn close(&mut self) {
@@ -80,16 +116,8 @@ impl Connection {
 }
 
 pub fn connect(db_addr: SocketAddrV4) -> Result<Connection> {
-    let result = TcpStream::connect(db_addr);
-    return match result {
-        Ok(tcp_stream) => {
-            Ok(Connection::new(tcp_stream))
-        }
-
-        Err(e) => {
-            Err(e)
-        }
-    };
+    let tcp_stream = TcpStream::connect(db_addr)?;
+    return Ok(Connection::new(tcp_stream));
 }
 
 #[cfg(test)]
@@ -125,7 +153,7 @@ mod tests {
     #[test]
     fn test_002() {
         let mut connection = init_connection();
-        connection.insert("key", "column_family", "column", "value")
+        connection.insert("key", "column_family", "column", 32, "value")
             .expect("");
 
         let time = time::Duration::from_secs(20);

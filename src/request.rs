@@ -56,6 +56,10 @@ impl<'a> Request<'a> {
         self.blocks.push_back(Node::new(has_len, data));
     }
 
+    pub fn append_var_arr_u8(&mut self, arr_u8: &'a [u8]) {
+        self.append(true, arr_u8);
+    }
+
     pub fn append_var_str(&mut self, s: &'a str) {
         let data = s.as_bytes();
         self.append(true, data);
@@ -92,16 +96,13 @@ struct Node<'a> {
 
 impl<'a> Node<'a> {
     fn new(has_len: bool, bytes: &[u8]) -> Node {
-        Node {
-            has_len,
-            bytes,
-        }
+        Node { has_len, bytes }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::request::{__METHOD__DELETE, Request};
+    use crate::request::{Request, __METHOD__DELETE};
 
     #[test]
     fn test_001() {
@@ -110,4 +111,3 @@ mod tests {
         assert_eq!(request.len, 13);
     }
 }
-

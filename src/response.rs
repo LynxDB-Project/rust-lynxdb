@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
+use std::io::Result;
 use std::net::TcpStream;
 
-pub struct Response {}
+pub struct Response {
+    method: u8,
+}
 
 impl Response {
-    pub fn new() -> Response {
-        Response {}
+    pub fn read(tcp_stream: &mut TcpStream) -> Result<Response> {
+        Ok(Response { method: 0 })
     }
 
-    pub fn read(&self, tcp_stream: &mut TcpStream) {}
-
     pub fn to_str(&self) -> &str {
+        // TODO
         let s = "";
         s
     }

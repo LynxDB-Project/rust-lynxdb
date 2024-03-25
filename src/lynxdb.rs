@@ -18,10 +18,7 @@ use std::io::{Read, Result, Write};
 use std::net::{Shutdown, SocketAddrV4, TcpStream};
 
 use crate::request::{
-    __METHOD__DELETE,
-    __METHOD__FIND_BY_KEY_CF_COLUMN,
-    __METHOD__FIND_MULTI_COLUMNS,
-    __METHOD__INSERT,
+    __METHOD__DELETE, __METHOD__FIND_BY_KEY_CF_COLUMN, __METHOD__FIND_MULTI_COLUMNS, __METHOD__INSERT,
     Request,
 };
 use crate::response::Response;
@@ -32,9 +29,7 @@ pub struct Connection {
 
 impl Connection {
     fn new(tcp_stream: TcpStream) -> Connection {
-        Connection {
-            tcp_stream
-        }
+        Connection { tcp_stream }
     }
 
     pub fn find(&mut self, key: &str, column_family: &str, column: &str) -> Result<&str> {
@@ -45,14 +40,18 @@ impl Connection {
 
         request.write(&mut self.tcp_stream)?;
 
-        let response = Response::new();
-        response.read(&mut self.tcp_stream)?;
+        let response = Response::read(&mut self.tcp_stream)?;
 
         let value = response.to_str();
         return Ok(value);
     }
 
-    pub fn find_multi_columns(&mut self, key: &str, column_family: &str, columns: Vec<&str>) -> Result<()> {
+    pub fn find_multi_columns(
+        &mut self,
+        key: &str,
+        column_family: &str,
+        columns: Vec<&str>,
+    ) -> Result<()> {
         let mut request = Request::new(__METHOD__FIND_MULTI_COLUMNS);
         request.append_var_str(key);
         request.append_var_str(column_family);
@@ -63,31 +62,30 @@ impl Connection {
 
         request.write(&mut self.tcp_stream)?;
 
-        let response = Response::new();
-        response.read(&mut self.tcp_stream)?;
+        let response = Response::read(&mut self.tcp_stream)?;
 
         return Ok(());
     }
 
     pub fn insert(
         &mut self,
-        key: &str,
         column_family: &str,
         column: &str,
-        timeout: u64,
-        value: &str,
+        key_value_pairs: Vec<(&[u8], &[u8], u64)>,
     ) -> Result<()> {
         let mut request = Request::new(__METHOD__INSERT);
-        request.append_var_str(key);
         request.append_var_str(column_family);
         request.append_var_str(column);
-        request.append_raw_u64(timeout);
-        request.append_var_str(value);
+
+        for pair in key_value_pairs {
+            request.append_var_arr_u8(pair.0);
+            request.append_var_arr_u8(pair.1);
+            request.append_raw_u64(pair.2);
+        }
 
         request.write(&mut self.tcp_stream)?;
 
-        let response = Response::new();
-        response.read(&mut self.tcp_stream)?;
+        let response = Response::read(&mut self.tcp_stream)?;
 
         // TODO: check response
 
@@ -102,8 +100,7 @@ impl Connection {
 
         request.write(&mut self.tcp_stream)?;
 
-        let response = Response::new();
-        response.read(&mut self.tcp_stream);
+        let response = Response::read(&mut self.tcp_stream);
 
         // TODO: check response
 
@@ -131,30 +128,16 @@ mod tests {
     fn init_connection() -> Connection {
         let host = Ipv4Addr::new(127, 0, 0, 1);
         let db_addr = SocketAddrV4::new(host, 7820);
-
-        let result = connect(db_addr);
-
-        match result {
-            Ok(connection) => {
-                connection
-            }
-
-            Err(e) => {
-                panic!("Connect to LynxDB failed, {}", e)
-            }
-        }
+        connect(db_addr).unwrap()
     }
 
     #[test]
     fn test_001() {
-        let connection = init_connection();
-    }
-
-    #[test]
-    fn test_002() {
         let mut connection = init_connection();
-        connection.insert("key", "column_family", "column", 32, "value")
-            .expect("");
+
+        let pairs = Vec::from([("key".as_bytes(), "value".as_bytes(), 32)]);
+
+        connection.insert("column_family", "column", pairs).unwrap();
 
         let time = time::Duration::from_secs(20);
         thread::sleep(time);

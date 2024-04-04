@@ -100,7 +100,9 @@ impl Connection {
 
         request.write(&mut self.tcp_stream)?;
 
-        let response = Response::read(&mut self.tcp_stream);
+
+        let response = Response::new();
+        response.read(&mut self.tcp_stream);
 
         // TODO: check response
 

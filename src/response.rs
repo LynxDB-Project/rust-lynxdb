@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-use std::io::Result;
+use std::io::Read;
 use std::net::TcpStream;
 
-pub struct Response {
-    method: u8,
+pub struct Response<'a> {
+    method: &'a mut [u8; 1],
+    data: Vec<u8>,
 }
 
 impl Response {
-    pub fn read(tcp_stream: &mut TcpStream) -> Result<Response> {
-        Ok(Response { method: 0 })
+    pub fn new() -> Response {
+        Response { method: &mut [0; 1], data: Vec::new() }
+    }
+
+    pub fn read(&self, tcp_stream: &mut TcpStream) {
+        tcp_stream.read_exact(self.method)?;
     }
 
     pub fn to_str(&self) -> &str {
